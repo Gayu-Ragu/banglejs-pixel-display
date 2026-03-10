@@ -1,281 +1,566 @@
-/* Gayathri Ragupathi - 1858550
-Boot- Normal Eyes with Blink and Gazing
-BTN1 - Eyes with heart beats (emotion Love)
-BTN2 - Angry eyes with Gaze and tap to shake the eyes (emotion Angry)
-BTN3 - Normal eyes with Blink and Gazing
-*/
+/* -----------------------------------------------------------
+   Bangle.js Interactive Eyes Application
+   Author : Gayathri Ragupathi
+   Student ID : 1858550
 
-// ==================GLOBALS==================
+   Description
+   -----------
+   This application renders animated eyes on the Bangle.js smartwatch.
+   Different emotional expressions can be triggered using the hardware buttons.
+
+   Boot Mode
+   ----------
+   Normal eyes with blinking and gaze control.
+
+   BTN1
+   ----------
+   Love emotion:
+   Eyes change to heart shapes with heartbeat animation.
+
+   BTN2
+   ----------
+   Angry emotion:
+   Angry eyes with eyebrow twitch and shake animation on touch.
+
+   BTN3
+   ----------
+   Return to normal eyes with blink and gaze.
+
+   Interactions
+   ----------
+   Swipe  : Move gaze direction
+   Touch  : Shake angry eyes
+-----------------------------------------------------------*/
+
+
+// =====================================================
+// GLOBAL CONFIGURATION
+// =====================================================
+
+// Keep display always on
 Bangle.setLCDPower(1);
 Bangle.setLCDTimeout(0);
-const W = g.getWidth(), H = g.getHeight();
-const BG = {r:0.4,g:0.3,b:0.5};
+
+// Screen dimensions
+const W = g.getWidth();
+const H = g.getHeight();
+
+// Color definitions
+const BG    = {r:0.4,g:0.3,b:0.5};   // background
 const WHITE = {r:1,g:1,b:1};
 const RED   = {r:1,g:0.2,b:0.2};
-function setC(c){ g.setColor(c.r,c.g,c.b); }
-function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+// Helper function to set color
+function setC(c){
+  g.setColor(c.r,c.g,c.b);
+}
+
+// Clamp a value within bounds
+function clamp(v,a,b){
+  return Math.max(a,Math.min(b,v));
+}
+
+// Set background color
 g.setBgColor(BG.r,BG.g,BG.b);
-let gazeX=0, gazeY=0;
+
+// Gaze direction variables
+let gazeX = 0;
+let gazeY = 0;
 
 
-//=========================BLINK(for all emotions)==============================================
-let lid = 1;                    
-let blinkTO=null, blinkAnim=null;
 
-function drawTopLids(cx,cy,r){  
+// =====================================================
+// BLINK SYSTEM (USED BY ALL EMOTIONS)
+// =====================================================
+
+let lid = 1;           // eyelid openness (1=open)
+let blinkTO = null;    // blink timer
+let blinkAnim = null;  // blink animation
+
+// Draw upper eyelids to simulate blinking
+function drawTopLids(cx,cy,r){
   const cover = Math.round(r * (1 - Math.max(0,Math.min(1,lid))));
   if (cover<=0) return;
+
   setC(BG);
   g.fillRect(cx - r - 1, cy - r - 6, cx + r + 1, cy - r + cover - 4);
 }
+
+// Stop blink timers
 function stopBlinking(){
-  if (blinkTO){clearTimeout(blinkTO);blinkTO=null;}
-  if (blinkAnim){clearInterval(blinkAnim);blinkAnim=null;}
+  if (blinkTO){
+    clearTimeout(blinkTO);
+    blinkTO=null;
+  }
+  if (blinkAnim){
+    clearInterval(blinkAnim);
+    blinkAnim=null;
+  }
 }
+
+// Schedule the next blink randomly
 function scheduleNextBlink(baseOpen){
   if (blinkTO) clearTimeout(blinkTO);
-  blinkTO = setTimeout(()=>startBlink(baseOpen), 2000 + Math.random()*3000);
+
+  blinkTO = setTimeout(()=>{
+    startBlink(baseOpen);
+  },2000 + Math.random()*3000);
 }
+
+// Blink animation logic
 function startBlink(baseOpen){
+
   if (blinkAnim) clearInterval(blinkAnim);
+
   const step = 0.22;
   let closing = true;
+
   blinkAnim = setInterval(()=>{
+
     lid += closing ? -step : step;
-    if (lid <= 0){ lid=0; closing=false; }
+
+    if (lid <= 0){
+      lid=0;
+      closing=false;
+    }
+
     if (!closing && lid >= baseOpen){
       lid = baseOpen;
-      clearInterval(blinkAnim); blinkAnim=null;
+      clearInterval(blinkAnim);
+      blinkAnim=null;
       scheduleNextBlink(baseOpen);
     }
+
     faces[current].draw();
+
   },40);
 }
 
-// ================== FACE 1: NORMAL ==================
-const N = { L:{x:60,y:100}, R:{x:180,y:100}, RS:45, PR:25, HR:5 };
+
+
+// =====================================================
+// FACE 1 : NORMAL EXPRESSION
+// =====================================================
+
+// Eye geometry
+const N = {
+  L:{x:60,y:100},
+  R:{x:180,y:100},
+  RS:45,  // eyeball radius
+  PR:25,  // pupil radius
+  HR:5    // highlight radius
+};
 
 function drawNormal(){
-  g.setBgColor(BG.r,BG.g,BG.b); g.clear();
 
+  g.setBgColor(BG.r,BG.g,BG.b);
+  g.clear();
+
+  // Draw eyeballs
   setC(WHITE);
-  g.fillCircle(N.L.x, N.L.y, N.RS);
-  g.fillCircle(N.R.x, N.R.y, N.RS);
+  g.fillCircle(N.L.x,N.L.y,N.RS);
+  g.fillCircle(N.R.x,N.R.y,N.RS);
+
+  // Calculate pupil movement range
   const MAX = N.RS - N.PR - 3;
+
   const Lix = N.L.x + Math.round(gazeX*MAX);
   const Liy = N.L.y + Math.round(gazeY*MAX);
+
   const Rix = N.R.x + Math.round(gazeX*MAX);
   const Riy = N.R.y + Math.round(gazeY*MAX);
 
+  // Draw pupils
   setC({r:0,g:0,b:0});
   g.fillCircle(Lix,Liy,N.PR);
   g.fillCircle(Rix,Riy,N.PR);
+
+  // Eye highlight
   setC(WHITE);
   g.fillCircle(Lix + Math.round(N.PR*0.4), Liy - Math.round(N.PR*0.4), N.HR);
   g.fillCircle(Rix + Math.round(N.PR*0.4), Riy - Math.round(N.PR*0.4), N.HR);
-  drawTopLids(N.L.x, N.L.y, N.RS);
-  drawTopLids(N.R.x, N.R.y, N.RS);
+
+  // Blink lids
+  drawTopLids(N.L.x,N.L.y,N.RS);
+  drawTopLids(N.R.x,N.R.y,N.RS);
 
   g.flip();
 }
 
-// ================== FACE 2: HEART ==================
-const Ht = { L:{x:70,y:100}, R:{x:170,y:100}, RS:35 };
-const BG_D = {r:BG.r*0.72,g:BG.g*0.72,b:BG.b*0.72};
-const BLUSH  = {r:1,g:0.65,b:0.75};
+
+
+// =====================================================
+// FACE 2 : HEART / LOVE EXPRESSION
+// =====================================================
+
+const Ht = {
+  L:{x:70,y:100},
+  R:{x:170,y:100},
+  RS:35
+};
+
+// Darker background shade
+const BG_D = {
+  r:BG.r*0.72,
+  g:BG.g*0.72,
+  b:BG.b*0.72
+};
+
+const BLUSH = {r:1,g:0.65,b:0.75};
 const HEART_OUT = {r:0,g:0,b:0};
 
-function blend(c1,c2,t){ return {r:c1.r+(c2.r-c1.r)*t,g:c1.g+(c2.g-c1.g)*t,b:c1.b+(c2.b-c1.b)*t}; }
-function softDisk(cx,cy,r,fillCol,bgCol){
-  const rim = blend(fillCol,bgCol,0.45);
-  setC(rim);  g.fillCircle(cx,cy,r);
-  setC(fillCol); g.fillCircle(cx,cy,r-1);
-}
-function heartPoints(cx, cy, s){
-  return [cx,cy+s, cx-s,cy, cx-s*0.6,cy-s*0.8, cx,cy-s*0.5, cx+s*0.6,cy-s*0.8, cx+s,cy];
-}
-function drawSmileVisible(cx, cy, w, h, bg, outline) {
- const x1 = Math.round(cx - w/2), y1 = Math.round(cy - h/2);
-    const x2 = Math.round(cx + w/2), y2 = Math.round(cy + h/2);
-    const W = g.getWidth(), H = g.getHeight();
-    const resetClip = ()=>g.setClipRect(0,0,W-1,H-1);
-    g.setClipRect(x1, cy, x2, y2);
-    setC({r:0.2,g:0,b:0});
-    g.drawEllipse(x1-20, y1-35, x2+22, y2);
-    setC({r:0.12, g:0.08, b:0.2});
-for (let i = 0; i < 3; i++) {
-    g.drawEllipse(x1 - 20, y1 - 34 + i, x2 + 22, y2 + i);
+
+// Color blending utility
+function blend(c1,c2,t){
+  return {
+    r:c1.r+(c2.r-c1.r)*t,
+    g:c1.g+(c2.g-c1.g)*t,
+    b:c1.b+(c2.b-c1.b)*t
+  };
 }
 
-    setC({r:0.8, g:0.7, b:0.85});
-for (let i = 0; i < 2; i++) {
-  g.drawEllipse(x1 - 20, y1 - 37 - i, x2 + 22, y2 - i);
+
+// Soft disk rendering for cheeks
+function softDisk(cx,cy,r,fillCol,bgCol){
+
+  const rim = blend(fillCol,bgCol,0.45);
+
+  setC(rim);
+  g.fillCircle(cx,cy,r);
+
+  setC(fillCol);
+  g.fillCircle(cx,cy,r-1);
 }
-   resetClip();
+
+
+// Generate heart polygon points
+function heartPoints(cx, cy, s){
+
+  return [
+    cx,cy+s,
+    cx-s,cy,
+    cx-s*0.6,cy-s*0.8,
+    cx,cy-s*0.5,
+    cx+s*0.6,cy-s*0.8,
+    cx+s,cy
+  ];
 }
+
+
+// Heartbeat animation
+let heartTimer=null;
+let heartT=0;
+
+const HEART_BASE=26;
+const HEART_AMP=4;
+const HEART_SPEED=0.16;
+
+
+// Start heart animation
 function startHeartBeat(){
-   if (heartTimer) clearInterval(heartTimer);
-   heartT = 0;
-   heartTimer = setInterval(() => {
-   if (current !== "heart") return;
+
+  if (heartTimer)
+    clearInterval(heartTimer);
+
+  heartT = 0;
+
+  heartTimer = setInterval(()=>{
+
+    if (current!=="heart") return;
+
     heartT += HEART_SPEED;
+
     drawHeartsFrame(heartT);
-  }, 40);
+
+  },40);
 }
+
+
+// Stop heart animation
 function stopHeartBeat(){
-  if (heartTimer) { clearInterval(heartTimer); heartTimer = null; }
+
+  if (heartTimer){
+    clearInterval(heartTimer);
+    heartTimer=null;
+  }
 }
+
+
+
+// Draw heart eyes frame
 function drawHeartsFrame(t){
-  if (current !== "heart") return;
+
+  if (current!=="heart") return;
 
   const sL = HEART_BASE + HEART_AMP*Math.sin(t);
   const sR = HEART_BASE + HEART_AMP*Math.sin(t+0.6);
-  g.setBgColor(BG.r,BG.g,BG.b); g.clear();
+
+  g.setBgColor(BG.r,BG.g,BG.b);
+  g.clear();
+
+  // Eye background
   setC(BG_D);
-  g.fillEllipse(Ht.L.x-22, Ht.L.y+30, Ht.L.x+22, Ht.L.y+37);
-  g.fillEllipse(Ht.R.x-22, Ht.R.y+30, Ht.R.x+22, Ht.R.y+37);
+  g.fillEllipse(Ht.L.x-22,Ht.L.y+30,Ht.L.x+22,Ht.L.y+37);
+  g.fillEllipse(Ht.R.x-22,Ht.R.y+30,Ht.R.x+22,Ht.R.y+37);
+
+  // Eyeballs
   softDisk(Ht.L.x,Ht.L.y,Ht.RS,WHITE,BG);
   softDisk(Ht.R.x,Ht.R.y,Ht.RS,WHITE,BG);
- softDisk(Ht.L.x-35,Ht.L.y+56,9,BLUSH,BG);
+
+  // Blush
+  softDisk(Ht.L.x-35,Ht.L.y+56,9,BLUSH,BG);
   softDisk(Ht.R.x+35,Ht.R.y+56,9,BLUSH,BG);
-  setC({r:1,g:0.8,b:0.9}); g.fillCircle(Ht.L.x-35,Ht.L.y+56,2.5); g.fillCircle(Ht.R.x+35,Ht.R.y+56,2.5);
-  // hearts + outlines + highlights
-  setC(RED); g.fillPoly(heartPoints(Ht.L.x,Ht.L.y,sL),true);
-  setC(HEART_OUT); g.drawPoly(heartPoints(Ht.L.x,Ht.L.y,sL),true);
-  setC(RED); g.fillPoly(heartPoints(Ht.R.x,Ht.R.y,sR),true);
-  setC(HEART_OUT); g.drawPoly(heartPoints(Ht.R.x,Ht.R.y,sR),true);
-  setC(WHITE);
-  g.fillCircle(Ht.L.x - Math.round(sL*0.38), Ht.L.y - Math.round(sL*0.45), 3);
-  g.fillCircle(Ht.R.x - Math.round(sR*0.38), Ht.R.y - Math.round(sR*0.45), 3);
-  // lids
+
+  // Heart eyes
+  setC(RED);
+  g.fillPoly(heartPoints(Ht.L.x,Ht.L.y,sL),true);
+  g.fillPoly(heartPoints(Ht.R.x,Ht.R.y,sR),true);
+
+  // Outline
+  setC(HEART_OUT);
+  g.drawPoly(heartPoints(Ht.L.x,Ht.L.y,sL),true);
+  g.drawPoly(heartPoints(Ht.R.x,Ht.R.y,sR),true);
+
+  // Blink lids
   drawTopLids(Ht.L.x,Ht.L.y,Ht.RS);
   drawTopLids(Ht.R.x,Ht.R.y,Ht.RS);
-  drawSmileVisible(120, 160, 120, 56, true, true);
 
   g.flip();
 }
-let heartTimer=null, heartT=0;
-const HEART_BASE=26, HEART_AMP=4, HEART_SPEED=0.16;
 
-// ================== FACE 3: ANGRY ==================
-const A = { L:{x:70,y:110}, R:{x:170,y:110}, RS:30, IR:23, PR:10 };
 
+
+// =====================================================
+// FACE 3 : ANGRY EXPRESSION
+// =====================================================
+
+const A = {
+  L:{x:70,y:110},
+  R:{x:170,y:110},
+  RS:30,
+  IR:23,
+  PR:10
+};
+
+
+// Draw slanted angry eyebrows
 function drawEyebrow(cx, cy, side, twitchY){
+
   const w=65,h=10,tilt=18;
   const y = cy - A.RS - 40 + twitchY;
-  let pts;
-  if (side<0) pts=[cx-w/2,y, cx+w/2,y+tilt, cx+w/2,y+tilt+h, cx-w/2,y+h];
-  else        pts=[cx-w/2,y+tilt, cx+w/2,y, cx+w/2,y+h, cx-w/2,y+tilt+h];
-  setC({r:0,g:0,b:0}); g.fillPoly(pts,true);
-}
-  function drawAngryTriangleMouth(cx, cy, size) {
-  const h = size * 0.8; 
-  setC({r:0.2, g:0, b:0});
-  g.fillPoly([
-    cx - size/2, cy - h/2, 
-    cx + size/2, cy - h/2, 
-    cx,         cy + h/2    
-  ], true);
 
-  setC({r:1, g:0.2, b:0.2});
-  g.fillPoly([
-    cx - size/2 + 5, cy - h/2 + 5,
-    cx + size/2 - 5, cy - h/2 + 5, 
-    cx,             cy + h/2 - 5   
-  ], true);
+  let pts;
+
+  if (side<0)
+    pts=[cx-w/2,y, cx+w/2,y+tilt, cx+w/2,y+tilt+h, cx-w/2,y+h];
+  else
+    pts=[cx-w/2,y+tilt, cx+w/2,y, cx+w/2,y+h, cx-w/2,y+tilt+h];
+
+  setC({r:0,g:0,b:0});
+  g.fillPoly(pts,true);
 }
+
+
+// Angry mouth
+function drawAngryTriangleMouth(cx, cy, size){
+
+  const h = size * 0.8;
+
+  setC({r:0.2,g:0,b:0});
+
+  g.fillPoly([
+    cx-size/2,cy-h/2,
+    cx+size/2,cy-h/2,
+    cx,cy+h/2
+  ],true);
+
+  setC({r:1,g:0.2,b:0.2});
+
+  g.fillPoly([
+    cx-size/2+5,cy-h/2+5,
+    cx+size/2-5,cy-h/2+5,
+    cx,cy+h/2-5
+  ],true);
+}
+
+
+
+// Main angry drawing
 function drawAngry(){
-  g.setBgColor(BG.r,BG.g,BG.b); g.clear();
-  setC({r:BG.r*0.6,g:BG.g*0.6,b:BG.b*0.6});
-  g.fillEllipse(A.L.x-24,A.L.y+30, A.L.x+24,A.L.y+36);
-  g.fillEllipse(A.R.x-24,A.R.y+30, A.R.x+24,A.R.y+36);
-  setC(WHITE); g.fillCircle(A.L.x,A.L.y,A.RS); g.fillCircle(A.R.x,A.R.y,A.RS);
+
+  g.setBgColor(BG.r,BG.g,BG.b);
+  g.clear();
+
+  setC(WHITE);
+
+  g.fillCircle(A.L.x,A.L.y,A.RS);
+  g.fillCircle(A.R.x,A.R.y,A.RS);
 
   const MAX = A.RS - A.IR - 3;
+
   const Lix = A.L.x + Math.round(gazeX*MAX);
   const Liy = A.L.y + Math.round(gazeY*(MAX*0.9));
+
   const Rix = A.R.x + Math.round(gazeX*MAX);
   const Riy = A.R.y + Math.round(gazeY*(MAX*0.9));
 
-  setC({r:1,g:0.3,b:0.25}); g.fillCircle(Lix,Liy,A.IR); g.fillCircle(Rix,Riy,A.IR);
-  setC({r:0,g:0,b:0}); g.fillCircle(Lix,Liy,A.PR); g.fillCircle(Rix,Riy,A.PR);
-  setC(WHITE); g.fillCircle(Lix+Math.round(A.PR*0.6), Liy-Math.round(A.PR*0.7), 2);
-  g.fillCircle(Rix+Math.round(A.PR*0.6), Riy-Math.round(A.PR*0.7), 2);
-  // eyebrows with twitch
+  // Iris
+  setC({r:1,g:0.3,b:0.25});
+  g.fillCircle(Lix,Liy,A.IR);
+  g.fillCircle(Rix,Riy,A.IR);
+
+  // Pupil
+  setC({r:0,g:0,b:0});
+  g.fillCircle(Lix,Liy,A.PR);
+  g.fillCircle(Rix,Riy,A.PR);
+
+  // Eyebrows
   const tw = Math.round(2*Math.sin(t*3.8));
+
   drawEyebrow(A.L.x,A.L.y,-1,tw);
   drawEyebrow(A.R.x,A.R.y,+1,tw);
-  //Draw mouth
+
+  // Mouth
   drawAngryTriangleMouth(120,190,65);
-  // lids
+
+  // Lids
   drawTopLids(A.L.x,A.L.y,A.RS);
   drawTopLids(A.R.x,A.R.y,A.RS);
-  setC({r:0,g:0,b:0});
-  const vx = A.R.x+60, vy=A.R.y-74, s=6*(1+0.1*Math.sin(t*4.2));
-  g.fillPoly([vx,vy-s, vx+s,vy, vx,vy+s, vx-s,vy], true);
+
   g.flip();
 }
-let t=0;
 
-// ================== STATE MACHINE ==================
-let current = "normal";
-const faces = {
+
+
+// =====================================================
+// STATE MACHINE (FACE CONTROLLER)
+// =====================================================
+
+let current="normal";
+
+const faces={
+
   normal:{
-    start(){  stopHeartBeat(); lid=1; scheduleNextBlink(1); },
+    start(){
+      stopHeartBeat();
+      lid=1;
+      scheduleNextBlink(1);
+    },
     stop(){ stopBlinking(); },
-    draw: drawNormal
+    draw:drawNormal
   },
+
   heart:{
     start(){
-      lid=1; scheduleNextBlink(1);
-       startHeartBeat();   
+      lid=1;
+      scheduleNextBlink(1);
+      startHeartBeat();
     },
     stop(){
       stopBlinking();
       stopHeartBeat();
-      if (heartTimer){clearInterval(heartTimer); heartTimer=null;}
     },
     draw(){ drawHeartsFrame(heartT); }
   },
+
   angry:{
-    start(){  stopHeartBeat(); lid=0.82; scheduleNextBlink(0.82); },
+    start(){
+      stopHeartBeat();
+      lid=0.82;
+      scheduleNextBlink(0.82);
+    },
     stop(){ stopBlinking(); },
-    draw: drawAngry
+    draw:drawAngry
   }
+
 };
+
+
+// Switch emotional state
 function go(which){
+
   if (which===current) return;
+
   faces[current].stop();
-  current = which;
+
+  current=which;
+
   faces[current].start();
   faces[current].draw();
 }
-// ================== INPUTS ==================
-setWatch(()=>go("heart"),  BTN1, {repeat:true, edge:"falling"});
-setWatch(()=>go("angry"),  BTN2, {repeat:true, edge:"falling"});
-setWatch(()=>go("normal"), BTN3, {repeat:true, edge:"falling"});
-//===========================GAZE CONTROLS==========================
-// swipe controls gaze for NORMAL + ANGRY
-Bangle.on("swipe", dir=>{
+
+
+
+// =====================================================
+// INPUT CONTROLS
+// =====================================================
+
+// Button controls
+setWatch(()=>go("heart"),BTN1,{repeat:true,edge:"falling"});
+setWatch(()=>go("angry"),BTN2,{repeat:true,edge:"falling"});
+setWatch(()=>go("normal"),BTN3,{repeat:true,edge:"falling"});
+
+
+// Swipe controls gaze direction
+Bangle.on("swipe",dir=>{
+
   if (current==="heart") return;
-  gazeX = clamp(gazeX + (dir>0? 0.35 : -0.35), -1, 1);
+
+  gazeX = clamp(gazeX + (dir>0?0.35:-0.35),-1,1);
+
   faces[current].draw();
 });
-Bangle.on("touch", ()=>{
-  if (current!=="angry") return;
-  let k=0; const steps=15, dt=30;
-  const baseX=gazeX, baseY=gazeY;
-  const id=setInterval(()=>{
-    const amp = (1 - k/steps)*3;
-    gazeX = clamp((Math.random()*2-1)*amp/3, -1,1);
-    gazeY = clamp((Math.random()*2-1)*amp/6, -1,1);
-    faces.angry.draw();
-    if (++k>steps){ clearInterval(id); gazeX=baseX; gazeY=baseY; faces.angry.draw(); }
-  },dt);
-});
-//angry eyebrow twitch
-setInterval(()=>{ if (current==="angry"){ t+=0.04; faces.angry.draw(); } },40);
 
-// ================== BOOT ==================
+
+// Touch interaction for angry shake
+Bangle.on("touch",()=>{
+
+  if (current!=="angry") return;
+
+  let k=0;
+  const steps=15;
+  const dt=30;
+
+  const baseX=gazeX;
+  const baseY=gazeY;
+
+  const id=setInterval(()=>{
+
+    const amp = (1 - k/steps)*3;
+
+    gazeX = clamp((Math.random()*2-1)*amp/3,-1,1);
+    gazeY = clamp((Math.random()*2-1)*amp/6,-1,1);
+
+    faces.angry.draw();
+
+    if (++k>steps){
+      clearInterval(id);
+      gazeX=baseX;
+      gazeY=baseY;
+      faces.angry.draw();
+    }
+
+  },dt);
+
+});
+
+
+// Eyebrow twitch animation
+let t=0;
+
+setInterval(()=>{
+  if (current==="angry"){
+    t+=0.04;
+    faces.angry.draw();
+  }
+},40);
+
+
+
+// =====================================================
+// BOOT INITIALIZATION
+// =====================================================
+
+// Start with normal face
 faces.normal.start();
 faces.normal.draw();
